@@ -83,10 +83,29 @@ set -euo pipefail
 exec /opt/orca/AppRun "$@"
 EOF
 
-RUN groupadd --gid "${ORCA_GID}" orca \
-    && useradd --uid "${ORCA_UID}" --gid "${ORCA_GID}" \
-        --create-home --shell /bin/bash orca \
-    && install -d -o orca -g orca \
+RUN set -eux; \
+    if getent group "${ORCA_GID}" >/dev/null; then \
+        existing_group="$(getent group "${ORCA_GID}" | cut -d: -f1)"; \
+        if [ "${existing_group}" != orca ]; then \
+            groupmod --new-name orca "${existing_group}"; \
+        fi; \
+    else \
+        groupadd --gid "${ORCA_GID}" orca; \
+    fi; \
+    if getent passwd "${ORCA_UID}" >/dev/null; then \
+        existing_user="$(getent passwd "${ORCA_UID}" | cut -d: -f1)"; \
+        if [ "${existing_user}" != orca ]; then \
+            usermod --login orca --home /home/orca \
+                --shell /bin/bash --gid "${ORCA_GID}" "${existing_user}"; \
+        else \
+            usermod --home /home/orca --shell /bin/bash \
+                --gid "${ORCA_GID}" orca; \
+        fi; \
+    else \
+        useradd --uid "${ORCA_UID}" --gid "${ORCA_GID}" \
+            --create-home --shell /bin/bash orca; \
+    fi; \
+    install -d -o orca -g orca \
         /home/orca/.cache \
         /home/orca/.config \
         /home/orca/.local/bin \
