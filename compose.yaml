@@ -1,0 +1,40 @@
+services:
+  orca:
+    build:
+      context: .
+      args:
+        ORCA_VERSION: ${ORCA_VERSION:-latest}
+        ORCA_UID: ${ORCA_UID:-1000}
+        ORCA_GID: ${ORCA_GID:-1000}
+    restart: unless-stopped
+    stop_grace_period: 30s
+    environment:
+      ORCA_PORT: ${ORCA_PORT:-6768}
+      TZ: ${TZ:-UTC}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GH_TOKEN: ${GH_TOKEN:-}
+    command:
+      - serve
+      - --port
+      - ${ORCA_PORT:-6768}
+      - --pairing-address
+      - ${ORCA_PAIRING_ADDRESS:-127.0.0.1}
+    ports:
+      - "${ORCA_BIND_ADDRESS:-127.0.0.1}:${ORCA_PORT:-6768}:${ORCA_PORT:-6768}"
+    volumes:
+      - orca-home:/home/orca
+      - orca-workspace:/workspace
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - timeout 2 bash -c '</dev/tcp/127.0.0.1/$${ORCA_PORT}'
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  orca-home:
+  orca-workspace:
+
