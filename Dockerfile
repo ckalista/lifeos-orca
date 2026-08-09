@@ -1,7 +1,9 @@
+ARG ORCA_RELEASE_VERSION=1.4.177
+
 FROM ubuntu:24.04 AS orca-release
 
 ARG TARGETARCH
-ARG ORCA_VERSION=latest
+ARG ORCA_RELEASE_VERSION
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -17,10 +19,10 @@ RUN set -eux; \
       arm64) asset="orca-linux-arm64.AppImage" ;; \
       *) echo "Unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
     esac; \
-    case "${ORCA_VERSION}" in \
+    case "${ORCA_RELEASE_VERSION}" in \
       latest) release_path="latest/download" ;; \
-      v*) release_path="download/${ORCA_VERSION}" ;; \
-      *) release_path="download/v${ORCA_VERSION}" ;; \
+      v*) release_path="download/${ORCA_RELEASE_VERSION}" ;; \
+      *) release_path="download/v${ORCA_RELEASE_VERSION}" ;; \
     esac; \
     curl --fail --location --retry 5 --retry-all-errors \
       --output /tmp/orca.AppImage \
@@ -36,9 +38,7 @@ RUN set -eux; \
 
 FROM ubuntu:24.04
 
-ARG ORCA_VERSION=latest
-ARG ORCA_UID=1000
-ARG ORCA_GID=1000
+ARG ORCA_RELEASE_VERSION
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -84,25 +84,27 @@ exec /opt/orca/AppRun "$@"
 EOF
 
 RUN set -eux; \
-    if getent group "${ORCA_GID}" >/dev/null; then \
-        existing_group="$(getent group "${ORCA_GID}" | cut -d: -f1)"; \
+    orca_uid=1000; \
+    orca_gid=1000; \
+    if getent group "${orca_gid}" >/dev/null; then \
+        existing_group="$(getent group "${orca_gid}" | cut -d: -f1)"; \
         if [ "${existing_group}" != orca ]; then \
             groupmod --new-name orca "${existing_group}"; \
         fi; \
     else \
-        groupadd --gid "${ORCA_GID}" orca; \
+        groupadd --gid "${orca_gid}" orca; \
     fi; \
-    if getent passwd "${ORCA_UID}" >/dev/null; then \
-        existing_user="$(getent passwd "${ORCA_UID}" | cut -d: -f1)"; \
+    if getent passwd "${orca_uid}" >/dev/null; then \
+        existing_user="$(getent passwd "${orca_uid}" | cut -d: -f1)"; \
         if [ "${existing_user}" != orca ]; then \
             usermod --login orca --home /home/orca \
-                --shell /bin/bash --gid "${ORCA_GID}" "${existing_user}"; \
+                --shell /bin/bash --gid "${orca_gid}" "${existing_user}"; \
         else \
             usermod --home /home/orca --shell /bin/bash \
-                --gid "${ORCA_GID}" orca; \
+                --gid "${orca_gid}" orca; \
         fi; \
     else \
-        useradd --uid "${ORCA_UID}" --gid "${ORCA_GID}" \
+        useradd --uid "${orca_uid}" --gid "${orca_gid}" \
             --create-home --shell /bin/bash orca; \
     fi; \
     install -d -o orca -g orca \
@@ -120,7 +122,7 @@ ENV HOME=/home/orca \
 LABEL org.opencontainers.image.title="Orca headless server" \
       org.opencontainers.image.description="Headless server using the official Orca Linux release" \
       org.opencontainers.image.source="https://github.com/stablyai/orca" \
-      org.opencontainers.image.version="${ORCA_VERSION}"
+      org.opencontainers.image.version="${ORCA_RELEASE_VERSION}"
 
 USER orca
 WORKDIR /workspace

@@ -14,7 +14,7 @@ not expose port `6768` directly to the public internet.
   `stablyai/orca` on GitHub.
 - `compose.yaml` defines the service, private port binding, health check, and
   persistent volumes.
-- `.env.example` documents every deployment setting.
+- `.env.example` contains optional API-token variables for local development.
 
 The `orca-home` volume contains Orca settings, pairing grants, provider
 credentials, and session state. The `orca-workspace` volume contains cloned
@@ -22,13 +22,15 @@ repositories and worktrees. Back up both volumes and protect them as secrets.
 
 ## Choose a private connection
 
-Use one of these configurations before deploying.
+The checked-in Compose configuration is set up for this server's Tailscale
+address, `100.83.19.5`.
 
 ### Tailscale or a trusted private LAN
 
-Install and connect Tailscale on the **Coolify host** (not in this container),
-then use the host's literal Tailscale IPv4 address for the Docker bind. The
-pairing address may be either that IP or the host's Tailscale MagicDNS name:
+Install and connect Tailscale on the **Coolify host** (not in this container).
+For another server, change both occurrences of `100.83.19.5` in `compose.yaml`.
+The Docker bind must remain a literal host IP. The pairing address may instead
+be the host's Tailscale MagicDNS name:
 
 ```dotenv
 ORCA_BIND_ADDRESS=100.64.1.20
@@ -43,9 +45,9 @@ For a trusted LAN, use the host's private LAN IPv4 address instead. Allow TCP
 port `6768` only from the intended private network in the host firewall and, if
 applicable, in your Tailscale ACLs.
 
-### SSH tunnel
+### SSH tunnel alternative
 
-Keep the defaults:
+To use an SSH tunnel instead, change both Compose addresses to `127.0.0.1`:
 
 ```dotenv
 ORCA_BIND_ADDRESS=127.0.0.1
@@ -66,9 +68,9 @@ address.
 
 1. Push these files to a Git repository that Coolify can access.
 2. In Coolify, create a **Docker Compose** resource from that repository.
-3. Copy the variables from `.env.example` into Coolify's environment settings.
-   Select one of the private connection configurations above. Pin
-   `ORCA_VERSION` to a stable version for repeatable builds.
+3. No Coolify environment variables are required for the default deployment;
+   non-secret configuration is source-controlled in `Dockerfile` and
+   `compose.yaml`.
 4. Do not assign a public Coolify domain to this service. The Compose port
    mapping is the intended connection path.
 5. Deploy the resource and wait for the health check to pass.
@@ -101,36 +103,36 @@ files under `/home/orca` persist.
 ## Local validation
 
 ```bash
-cp .env.example .env
 docker compose config --quiet
 docker compose build
 docker compose up -d
 docker compose logs -f orca
 ```
 
-With the default SSH-only binding, local Docker users can paste the printed
-pairing URL directly into Orca desktop on the same machine.
+Copy `.env.example` to `.env` first only when testing optional API tokens
+locally. Never commit the resulting `.env` file.
 
 ## Updating Orca
 
-Update `ORCA_VERSION` to a stable version from the official releases page and
-redeploy. Keep the desktop client and server reasonably close in version;
-Orca reports incompatible remote protocol versions when either side is too old.
+Update `ORCA_RELEASE_VERSION` at the top of `Dockerfile` to a stable version
+from the official releases page and redeploy. Keep the desktop client and
+server reasonably close in version; Orca reports incompatible remote protocol
+versions when either side is too old.
 
 ## Troubleshooting
 
 - **No pairing URL:** inspect the full startup logs and confirm the container is
   healthy. A new, unused pairing URL is generated after a restart.
-- **Client remains disconnected:** verify `ORCA_PAIRING_ADDRESS` is reachable
-  from the client and that `ORCA_BIND_ADDRESS` exists on the Coolify host.
+- **Client remains disconnected:** verify the pairing address in `compose.yaml`
+  is reachable and that its port-bind IP exists on the Coolify host.
 - **Port allocation fails:** another process is using port `6768`, or the bind
-  address is not assigned to the host. Change `ORCA_PORT` or correct the host
-  address.
+  address is not assigned to the host. Change the port or host address in
+  `compose.yaml`.
 - **Agent CLI not found:** install that CLI in the image and authenticate it from
   the Coolify service terminal. The client laptop's `PATH` and credentials are
   not transferred to the server.
-- **Permission errors after reusing volumes:** set `ORCA_UID` and `ORCA_GID` to
-  the ownership expected by those volumes, then rebuild.
+- **Permission errors after reusing volumes:** align `orca_uid` and `orca_gid`
+  in `Dockerfile` with the ownership expected by those volumes, then rebuild.
 
 References: [Remote Orca Servers](https://www.onorca.dev/docs/remote-servers),
 [Orca installation](https://www.onorca.dev/docs/install), and
