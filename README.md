@@ -27,12 +27,17 @@ Use one of these configurations before deploying.
 ### Tailscale or a trusted private LAN
 
 Install and connect Tailscale on the **Coolify host** (not in this container),
-then use the host's Tailscale IPv4 address for both settings:
+then use the host's literal Tailscale IPv4 address for the Docker bind. The
+pairing address may be either that IP or the host's Tailscale MagicDNS name:
 
 ```dotenv
 ORCA_BIND_ADDRESS=100.64.1.20
-ORCA_PAIRING_ADDRESS=100.64.1.20
+ORCA_PAIRING_ADDRESS=your-server.your-tailnet.ts.net
 ```
+
+`ORCA_BIND_ADDRESS` cannot be a hostname because Docker requires a host IP for
+an interface-specific port mapping. Do not use `0.0.0.0` or the server's public
+IP.
 
 For a trusted LAN, use the host's private LAN IPv4 address instead. Allow TCP
 port `6768` only from the intended private network in the host firewall and, if

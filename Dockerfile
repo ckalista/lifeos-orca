@@ -9,7 +9,6 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
-        squashfs-tools \
     && rm -rf /var/lib/apt/lists/*
 
 RUN set -eux; \
@@ -26,7 +25,10 @@ RUN set -eux; \
     curl --fail --location --retry 5 --retry-all-errors \
       --output /tmp/orca.AppImage \
       "https://github.com/stablyai/orca/releases/${release_path}/${asset}"; \
-    unsquashfs -d /opt/orca /tmp/orca.AppImage; \
+    chmod 0755 /tmp/orca.AppImage; \
+    cd /tmp; \
+    ./orca.AppImage --appimage-extract; \
+    mv /tmp/squashfs-root /opt/orca; \
     test -x /opt/orca/AppRun; \
     test -f /opt/orca/resources/app.asar.unpacked/out/cli/index.js; \
     rm /tmp/orca.AppImage
@@ -73,29 +75,12 @@ RUN apt-get update \
 
 COPY --from=orca-release /opt/orca /opt/orca
 
-# This is the same AppImage CLI bridge Orca installs from its desktop settings,
-# adjusted for the already-extracted AppImage in this container.
+# Run the extracted AppImage entry point directly. Orca officially supports
+# invoking AppRun with `serve` on headless Linux.
 COPY --chmod=0755 <<'EOF' /usr/local/bin/orca
 #!/usr/bin/env bash
 set -euo pipefail
-
-export APPDIR=/opt/orca
-export ORCA_NODE_OPTIONS="${NODE_OPTIONS-}"
-export ORCA_NODE_REPL_EXTERNAL_MODULE="${NODE_REPL_EXTERNAL_MODULE-}"
-unset NODE_OPTIONS
-unset NODE_REPL_EXTERNAL_MODULE
-
-ELECTRON_RUN_AS_NODE=1 exec /opt/orca/AppRun -e '
-(async()=>{
-  try {
-    const cli = "/opt/orca/resources/app.asar.unpacked/out/cli/index.js";
-    await Promise.resolve(require(cli).main(process.argv.slice(1)));
-  } catch (error) {
-    console.error(error && error.stack ? error.stack : String(error));
-    process.exit(1);
-  }
-})();
-' -- "$@"
+exec /opt/orca/AppRun "$@"
 EOF
 
 RUN groupadd --gid "${ORCA_GID}" orca \
