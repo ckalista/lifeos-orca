@@ -85,17 +85,22 @@ from the current container logs.
 ## Provider accounts and agent CLIs
 
 Provider authentication and coding-agent CLIs live on the server, not on the
-desktop client. Open Coolify's terminal for the `orca` service and inspect or
-add Orca-managed accounts:
+desktop client. The image includes the Codex CLI version pinned by
+`CODEX_VERSION` in the `Dockerfile`. Open Coolify's terminal for the running
+`orca` service and add an Orca-managed Codex account:
 
 ```bash
-orca account list
+codex --version
 orca account add --agent codex
-orca account add --agent claude
+orca account list
 ```
 
-Codex device authorization can be completed in a browser on another computer.
-Any extra tools required by your repositories or agents must also be installed
+The account command starts Codex device authorization. Open the displayed URL
+on any computer, enter the displayed code, and return to the terminal after the
+login completes. Orca imports the account into its managed account store under
+the persistent `/home/orca` volume.
+
+Any extra tools required by repositories or other agents must also be installed
 in the image. Add them to the `Dockerfile`; do not install system tools only in
 a running container, because those changes disappear on redeploy. User-level
 files under `/home/orca` persist.

@@ -1,4 +1,14 @@
 ARG ORCA_RELEASE_VERSION=1.4.177
+ARG CODEX_VERSION=0.147.0
+
+FROM node:24-bookworm-slim AS codex-release
+
+ARG CODEX_VERSION
+
+RUN npm install --global "@openai/codex@${CODEX_VERSION}" \
+    && codex --version \
+    && npm cache clean --force
+
 
 FROM ubuntu:24.04 AS orca-release
 
@@ -40,6 +50,7 @@ RUN set -eux; \
 FROM ubuntu:24.04
 
 ARG ORCA_RELEASE_VERSION
+ARG CODEX_VERSION
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -75,6 +86,11 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=orca-release /opt/orca /opt/orca
+COPY --from=codex-release /usr/local/bin/node /usr/local/bin/node
+COPY --from=codex-release /usr/local/lib/node_modules/@openai/codex /usr/local/lib/node_modules/@openai/codex
+
+RUN ln -s /usr/local/lib/node_modules/@openai/codex/bin/codex.js /usr/local/bin/codex \
+    && codex --version
 
 # Run the extracted AppImage entry point directly. Orca officially supports
 # invoking AppRun with `serve` on headless Linux.
