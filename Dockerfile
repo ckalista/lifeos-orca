@@ -31,6 +31,7 @@ RUN set -eux; \
     cd /tmp; \
     ./orca.AppImage --appimage-extract; \
     mv /tmp/squashfs-root /opt/orca; \
+    chmod -R a+rX /opt/orca; \
     test -x /opt/orca/AppRun; \
     test -f /opt/orca/resources/app.asar.unpacked/out/cli/index.js; \
     rm /tmp/orca.AppImage
@@ -108,8 +109,10 @@ RUN set -eux; \
             --create-home --shell /bin/bash orca; \
     fi; \
     install -d -o orca -g orca \
+        /home/orca \
         /home/orca/.cache \
         /home/orca/.config \
+        /home/orca/.local \
         /home/orca/.local/bin \
         /workspace
 
